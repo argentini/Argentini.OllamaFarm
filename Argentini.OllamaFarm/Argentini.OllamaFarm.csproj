@@ -28,13 +28,13 @@
         <RepositoryUrl>https://github.com/argentini/Argentini.OllamaFarm</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageReleaseNotes>Initial commit</PackageReleaseNotes>
-        <PackageReadmeFile>README</PackageReadmeFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageIcon>ollamafarm-icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\README" Pack="true" PackagePath="" />
+        <None Include="..\README.md" Pack="true" PackagePath="" />
         <None Include="..\LICENSE" Pack="true" PackagePath="" />
         <None Include="..\ollamafarm-icon.png" Pack="true" PackagePath="" />
     </ItemGroup>
