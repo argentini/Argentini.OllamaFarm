@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+        <FileVersion>1.0.0.0</FileVersion>
+        <PackageVersion>1.0.0</PackageVersion>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>ollamafarm</ToolCommandName>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <PackageId>argentini.ollamafarm</PackageId>
+        <Authors>Michael Argentini</Authors>
+        <Company>Argentini Unlimited, Ltd.</Company>
+        <PackageTags>ASP.NET;AI;ollama;CLI</PackageTags>
+        <Description>
+            Ollama Farm is a CLI tool that intermediates REST API calls to multiple ollama API services. Simply make calls to the Ollama Farm REST API as if it were an ollama REST API and the rest is handled for you.
+
+            Install dotnet 8 or later from [https://dotnet.microsoft.com/en-us/download](https://dotnet.microsoft.com/en-us/download) and then install Ollama Farm with the following command:
+            
+            dotnet tool install --global argentini.ollamafarm
+        </Description>
+        <Copyright>Copyright (c) Michael Argentini 2024.</Copyright>
+        <PackageProjectUrl>https://github.com/argentini/Argentini.OllamaFarm</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/argentini/Argentini.OllamaFarm</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReleaseNotes>Initial commit</PackageReleaseNotes>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+        <PackageIcon>ollamafarm-icon.png</PackageIcon>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
+        <None Include="LICENSE.txt" Pack="true" PackagePath="" />
+        <None Include="ollamafarm-icon.png" Pack="true" PackagePath="" />
+    </ItemGroup>
+
+</Project>
