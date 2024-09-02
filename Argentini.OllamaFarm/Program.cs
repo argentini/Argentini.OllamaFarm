@@ -120,8 +120,14 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 await Console.Out.WriteLineAsync($"Listening on port {stateService.Port}");
 
-foreach(var host in stateService.Hosts)
-    await Console.Out.WriteLineAsync($"Using ollama host {host.Address}:{host.Port}");
+foreach (var host in stateService.Hosts)
+{
+    await StateService.ServerAvailableAsync(host);
+    await Console.Out.WriteLineAsync($"Using ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
+
+    if (host.IsOffline)
+        host.NextPing = DateTime.Now;
+}
 
 var app = builder.Build();
 
@@ -134,63 +140,69 @@ if (app.Environment.IsDevelopment())
 
 app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
     {
-        OllamaHost? host = null;
-
-        while (host is null)
-        {
-            foreach (var _host in stateService.Hosts)
-            {
-                if (_host.IsBusy || (_host.IsOffline && _host.NextPing > DateTime.Now))
-                    continue;
-
-                _host.IsBusy = true;
-
-                var wasOnline = _host.IsOnline;
-                var wasOffline = _host.IsOnline == false;
-                
-                if (_host.NextPing <= DateTime.Now)
-                    await StateService.ServerAvailableAsync(_host);
-                
-                if (_host.IsOffline && wasOnline)
-                {
-                    _host.IsBusy = false;
-                    await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Offline; Retry in {StateService.RetrySeconds} secs");
-                }
-
-                if (_host.IsOnline && wasOffline)
-                {
-                    _host.IsBusy = false;
-                    await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Back Online");
-                }
-
-                if (_host.IsOffline)
-                {
-                    _host.IsBusy = false;
-                }
-                else
-                {
-                    if (host is not null)
-                        _host.IsBusy = false;
-                    else
-                        host = _host;
-                }
-            }
-
-            if (host is null)
-                await Task.Delay(25);
-        }
+        var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(15));
+        var jsonRequest = string.Empty;
 
         using (var reader = new StreamReader(request.Body))
         {
+            jsonRequest = await reader.ReadToEndAsync();
+        }
+
+        do
+        {
+            OllamaHost? host = null;
+
+            while (host is null)
+            {
+                foreach (var _host in stateService.Hosts)
+                {
+                    if (_host.IsBusy || (_host.IsOffline && _host.NextPing > DateTime.Now))
+                        continue;
+
+                    _host.IsBusy = true;
+
+                    var wasOnline = _host.IsOnline;
+                    var wasOffline = _host.IsOnline == false;
+                    
+                    if (_host.NextPing <= DateTime.Now)
+                        await StateService.ServerAvailableAsync(_host);
+                    
+                    if (_host.IsOffline && wasOnline)
+                    {
+                        _host.IsBusy = false;
+                        await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Offline; Retry in {StateService.RetrySeconds} secs");
+                    }
+
+                    if (_host.IsOnline && wasOffline)
+                    {
+                        _host.IsBusy = false;
+                        await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Back Online");
+                    }
+
+                    if (_host.IsOffline)
+                    {
+                        _host.IsBusy = false;
+                    }
+                    else
+                    {
+                        if (host is not null)
+                            _host.IsBusy = false;
+                        else
+                            host = _host;
+                    }
+                }
+
+                if (host is null)
+                    await Task.Delay(25);
+            }
+
             try
             {
-                var json = await reader.ReadToEndAsync();
-
                 await Console.Out.WriteLineAsync($"Sending to host => {host.Address}:{host.Port}");
                 
                 var ollamaRequest = new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
                 {
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                    Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
                 };
 
                 using (var httpClient = new HttpClient())
@@ -204,26 +216,34 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
                     responseJson = $"{{\"farm-host\": \"{host.Address}:{host.Port}\"," + responseJson;
                     
                     var jsonObject = JsonSerializer.Deserialize<object>(responseJson);
+                    
+                    cancellationTokenSource.Cancel();
 
                     return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
                 }
             }
-            catch (Exception e)
+            catch
             {
                 await StateService.ServerAvailableAsync(host);
 
-                var result = new
-                {
-                    Error = e.Message
-                };
-                
-                return Results.Json(result, contentType: "application/json", statusCode: (int)HttpStatusCode.InternalServerError);
+                if (host.IsOffline)
+                    await Console.Out.WriteLineAsync($"Ollama host {host.Address}:{host.Port} => Offline; Retry in {StateService.RetrySeconds} secs");
             }
             finally
             {
                 host.IsBusy = false;
             }
-        }
+            
+            await Console.Out.WriteLineAsync($"Ollama host {host.Address}:{host.Port} => Unavailable, using new host...");
+            
+        } while (cancellationTokenSource.IsCancellationRequested == false);
+        
+        var result = new
+        {
+            Error = "Request could not be completed in time"
+        };
+                
+        return Results.Json(result, contentType: "application/json", statusCode: (int)HttpStatusCode.InternalServerError);
     })
     .WithName("Generate")
     .WithOpenApi();
