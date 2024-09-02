@@ -224,48 +224,27 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
                     
                 }, completion, cancellationTokenSource.Token);
 
-                if (farmModel?.stream == true)
+                if (farmModel?.stream ?? false)
                 {
                     response.ContentType = "application/json";
-                    
-                    await using (var responseStream = await httpResponse.Content.ReadAsStreamAsync())
+
+                    await using (var stream = await httpResponse.Content.ReadAsStreamAsync())
                     {
-                        var jsonBuffer = stateService.StringBuilderPool.Get();
-
-                        try
+                        using (var reader = new StreamReader(stream))
                         {
-                            var buffer = new byte[8192];
-                            var bytesRead = 0;
-
-                            while ((bytesRead = await responseStream.ReadAsync(buffer)) > 0)
+                            while (reader.EndOfStream == false && cancellationTokenSource.IsCancellationRequested == false)
                             {
-                                var chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                                var line = await reader.ReadLineAsync(cancellationTokenSource.Token) + '\n';
 
-                                jsonBuffer.Append(chunk);
-
-                                if (jsonBuffer.ToString().Trim().EndsWith('}') == false)
+                                if (string.IsNullOrEmpty(line))
                                     continue;
+                                
+                                line = line.TrimStart('{');
+                                line = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + line;
 
-                                var jsonChunk = jsonBuffer.ToString();
-
-                                jsonChunk = jsonChunk.TrimStart('{');
-                                jsonChunk = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + jsonChunk;
-
-                                jsonBuffer.Clear();
-
-                                await response.Body.WriteAsync(Encoding.UTF8.GetBytes(jsonChunk));
-                                await response.Body.FlushAsync();
+                                await response.Body.WriteAsync(Encoding.UTF8.GetBytes(line), cancellationTokenSource.Token);
+                                await response.Body.FlushAsync(cancellationTokenSource.Token);
                             }
-
-                            if (jsonBuffer.Length > 0)
-                            {
-                                await response.Body.WriteAsync(Encoding.UTF8.GetBytes(jsonBuffer.ToString()));
-                                await response.Body.FlushAsync();
-                            }
-                        }
-                        finally
-                        {
-                            stateService.StringBuilderPool.Return(jsonBuffer);
                         }
                     }
 
@@ -273,7 +252,7 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
                 }
                 else
                 {
-                    var responseJson = await httpResponse.Content.ReadAsStringAsync();
+                    var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationTokenSource.Token);
                     
                     responseJson = responseJson.TrimStart('{');
                     responseJson = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + responseJson;
