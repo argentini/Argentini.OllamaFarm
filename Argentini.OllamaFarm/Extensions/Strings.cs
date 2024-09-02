@@ -169,6 +169,18 @@ public static class Strings
 	
 	#region Trimming
 	
+    /// <summary>
+    /// Converts two or more consecutive spaces into a single space.
+    /// </summary>
+    /// <param name="value">String to process</param>
+    /// <returns>String with only single spaces</returns>
+    public static string ConsolidateSpaces(this string value)
+    {
+        var regEx = new Regex(@"[\s]+");
+		
+        return regEx.Replace(value, " ");
+    }
+    
 	/// <summary>
     /// Remove a specified number of characters from the beginning of a string
     /// </summary>
@@ -866,10 +878,10 @@ public static class Strings
 
     #region Console
 
-    public static IEnumerable<string> WrapTextAtMaxWidth(string input, int maxLength)
+    public static IEnumerable<string> WrapTextAtMaxWidth(string input, int maxLength, int indent = 0)
     {
         var result = new List<string>();
-        var indentation = Regex.Match(input, @"^\s+").Value;
+        var indentation = " ".Repeat(indent);
         var words = input.TrimStart().Split(' ');
         var currentLineLength = indentation.Length;
         var currentLine = new StringBuilder(indentation);
@@ -902,20 +914,24 @@ public static class Strings
     public static void WriteToConsole(this string text, int maxCharacters)
     {
         if (string.IsNullOrEmpty(text))
+        {
+            Console.WriteLine();
             return;
+        }
 
         var result = new List<string>();
+        var indent = text.StartsWith(' ') ? text.TakeWhile(c => c == ' ').Count() : 0;
         var lines = text.Trim().NormalizeLinebreaks().Replace("_\n", " ").Split('\n');
 
         foreach (var line in lines)
-            result.AddRange(WrapTextAtMaxWidth(line, maxCharacters));
+            result.AddRange(WrapTextAtMaxWidth(line, maxCharacters, indent));
 
         foreach (var line in result)
         {
             Console.WriteLine(line.NormalizeLinebreaks(Environment.NewLine));
         }
     }
-    
+
     #endregion
     
     public static string MakeRelativePath(this string? path)

@@ -4,13 +4,14 @@ using System.Text.Json;
 using Argentini.OllamaFarm.Models;
 using Argentini.OllamaFarm.Services;
 
+var maxConsoleWidth = Console.WindowWidth > 80 ? 80 : Console.WindowWidth - 1;
 var version = await Identify.VersionAsync(Assembly.GetExecutingAssembly());
-const string introString = "Ollama Farm: Combine one or more Ollama API instances into a single Ollama API service";
+const string introString = "Ollama Farm: Combine Ollama API instances into a single Ollama API service";
 var versionString = $"Version {version} for {Identify.GetOsPlatformName()} (.NET {Identify.GetRuntimeVersion()}/{Identify.GetProcessorArchitecture()})";
 
-await Console.Out.WriteLineAsync(introString);
-await Console.Out.WriteLineAsync(versionString);
-await Console.Out.WriteLineAsync("=".Repeat(versionString.Length > introString.Length ? versionString.Length : introString.Length));
+introString.WriteToConsole(maxConsoleWidth);
+versionString.WriteToConsole(maxConsoleWidth);
+"=".Repeat(maxConsoleWidth).WriteToConsole(maxConsoleWidth);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,18 +34,29 @@ args = ["localhost","10.0.10.3"];
 
 if (args.Length == 0)
 {
-    await Console.Out.WriteLineAsync();
-    await Console.Out.WriteLineAsync("Usage:");
-    await Console.Out.WriteLineAsync("    ollamafarm [[--port | -p] [port]] [host host host ...]");
-    await Console.Out.WriteLineAsync();
-    await Console.Out.WriteLineAsync("Parameters:");
-    await Console.Out.WriteLineAsync("    [[--port | -p] [port]] : Listen to HTTP port number (defaults to 4444)");
-    await Console.Out.WriteLineAsync("    [host host host ...]   : List of host names with optional ports");
-    await Console.Out.WriteLineAsync();
-    await Console.Out.WriteLineAsync("Examples:");
-    await Console.Out.WriteLineAsync("    ollamafarm localhost 10.0.10.1 10.0.10.3");
-    await Console.Out.WriteLineAsync("    ollamafarm --port 1234 localhost 10.0.10.1 10.0.10.3");
-    await Console.Out.WriteLineAsync("    ollamafarm --port 1234 localhost:11234 10.0.10.1 10.0.10.3");
+    "".WriteToConsole(maxConsoleWidth);;
+    "Make Ollama API requests to this service instead and they will be routed to one of the Ollama API hosts in the pool. Requests should be sent to this service (default port 4444) and follow the standard Ollama JSON request body format (HTTP POST to /api/generate/).".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Additions to Ollama API requests/responses:".WriteToConsole(maxConsoleWidth);
+    "-".Repeat(maxConsoleWidth).WriteToConsole(maxConsoleWidth);
+    "farm_host (requests) : Request a specific host (e.g. localhost:11434)".WriteToConsole(maxConsoleWidth);
+    "farm_host (response) : Identify the host used".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Example:".WriteToConsole(maxConsoleWidth);
+    "{ \"farm_host\": \"localhost\", \"model\": ... }".WriteToConsole(maxConsoleWidth);
+    "-".Repeat(maxConsoleWidth).WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Usage:".WriteToConsole(maxConsoleWidth);
+    "    ollamafarm [[--port | -p] [port]] [host host host ...]".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Parameters:".WriteToConsole(maxConsoleWidth);
+    "    [[--port | -p] [port]] : Listen to HTTP port number (defaults to 4444)".WriteToConsole(maxConsoleWidth);
+    "    [host host host ...]   : List of host names with optional ports".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Examples:".WriteToConsole(maxConsoleWidth);
+    "    ollamafarm localhost 10.0.10.1 10.0.10.3".WriteToConsole(maxConsoleWidth);
+    "    ollamafarm --port 1234 localhost 10.0.10.1 10.0.10.3".WriteToConsole(maxConsoleWidth);
+    "    ollamafarm --port 1234 localhost:11234 10.0.10.1 10.0.10.3".WriteToConsole(maxConsoleWidth);
     
     Environment.Exit(0);
 }
@@ -61,19 +73,19 @@ else
         {
             if (args.Length <= ++i)
             {
-                await Console.Out.WriteLineAsync("Error => passed --port parameter without a port number");
+                Console.WriteLine("Error => passed --port parameter without a port number");
                 Environment.Exit(1);
             }
 
             if (int.TryParse(args[i], out var listenPort) == false)
             {
-                await Console.Out.WriteLineAsync("Error => passed --port parameter without a port number");
+                Console.WriteLine("Error => passed --port parameter without a port number");
                 Environment.Exit(1);
             }
             
             if (listenPort is < 1 or > 65535)
             {
-                await Console.Out.WriteLineAsync("Error => passed --port parameter with an invalid port number");
+                Console.WriteLine("Error => passed --port parameter with an invalid port number");
                 Environment.Exit(1);
             }
 
@@ -92,13 +104,13 @@ else
         if (segments.Length == 2)
             if (int.TryParse(segments[1], out port) == false)
             {
-                await Console.Out.WriteLineAsync($"Error => passed host {arg} specifies a port but the port is invalid");
+                Console.WriteLine($"Error => passed host {arg} specifies a port but the port is invalid");
                 Environment.Exit(1);
             }
         
         if (port is < 1 or > 65535)
         {
-            await Console.Out.WriteLineAsync($"Error => passed host {arg} specifies a port but the port is invalid");
+            Console.WriteLine($"Error => passed host {arg} specifies a port but the port is invalid");
             Environment.Exit(1);
         }
         
@@ -121,14 +133,14 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 foreach (var host in stateService.Hosts)
 {
     await StateService.ServerAvailableAsync(host);
-    await Console.Out.WriteLineAsync($"Using Ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
+    Console.WriteLine($"Using Ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
 
     if (host.IsOffline)
         host.NextPing = DateTime.Now;
 }
 
-await Console.Out.WriteLineAsync($"Listening on port {stateService.Port}; press ESC or Control+C to exit");
-await Console.Out.WriteLineAsync();
+Console.WriteLine($"Listening on port {stateService.Port}; press ESC or Control+C to exit");
+Console.WriteLine();
 
 var app = builder.Build();
 
@@ -179,13 +191,13 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
             if (_host.IsOffline && wasOnline)
             {
                 _host.IsBusy = false;
-                await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} offline; retry in {StateService.RetrySeconds} secs");
+                Console.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} offline; retry in {StateService.RetrySeconds} secs");
             }
 
             if (_host.IsOnline && wasOffline)
             {
                 _host.IsBusy = false;
-                await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} back online");
+                Console.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} back online");
             }
 
             if (_host.IsOnline && host is null && (string.IsNullOrEmpty(requestedHost) || requestedHost.Equals(_host.FullAddress, StringComparison.InvariantCultureIgnoreCase)))
@@ -207,13 +219,14 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
             }, contentType: "application/json", statusCode: (int)HttpStatusCode.TooManyRequests);
         }
 
+        var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(host.RequestTimeoutSeconds));
+        
         try
         {
-            await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Sending request to host {host.Address}:{host.Port}");
+            Console.WriteLine($"{DateTime.Now:s} => Sending request to host {host.Address}:{host.Port}");
             
             using (var httpClient = new HttpClient())
             {
-                var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(host.RequestTimeoutSeconds));
                 var completion = farmModel?.stream ?? false
                     ? HttpCompletionOption.ResponseHeadersRead
                     : HttpCompletionOption.ResponseContentRead;                
@@ -254,7 +267,7 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
                 {
                     var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationTokenSource.Token);
                     
-                    responseJson = responseJson.TrimStart('{');
+                    responseJson = responseJson.TrimStart().TrimStart('{');
                     responseJson = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + responseJson;
                     
                     var jsonObject = JsonSerializer.Deserialize<JsonDocument>(responseJson);
@@ -265,10 +278,19 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
         }
         catch (Exception e)
         {
+            if (cancellationTokenSource.IsCancellationRequested)
+            {
+                return Results.Json(new
+                {
+                    Message = $"The Ollama host request timeout of {host.RequestTimeoutSeconds} secs has expired."
+                
+                }, contentType: "application/json", statusCode: (int)HttpStatusCode.RequestTimeout);
+            }
+            
             await StateService.ServerAvailableAsync(host);
 
             if (host.IsOffline)
-                await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {host.Address}:{host.Port} offline; retry in {StateService.RetrySeconds} secs");
+                Console.WriteLine($"{DateTime.Now:s} => Ollama host {host.Address}:{host.Port} offline; retry in {StateService.RetrySeconds} secs");
             
             return Results.Json(new
             {
@@ -304,7 +326,7 @@ _ = Task.Run(async () =>
             if (key.Key == ConsoleKey.Escape)
             {
                 cts.Cancel();
-                await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Escape key pressed, exiting...");
+                Console.WriteLine($"{DateTime.Now:s} => Escape key pressed, exiting...");
             }
         }
         await Task.Delay(100); // Check every 100ms
