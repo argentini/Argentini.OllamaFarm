@@ -6,7 +6,9 @@ Ollama Farm is a CLI tool that intermediates REST API calls to multiple ollama A
 
 Install dotnet 8 or later from [https://dotnet.microsoft.com/en-us/download](https://dotnet.microsoft.com/en-us/download) and then install Ollama Farm with the following command:
 
-```dotnet tool install --global argentini.ollamafarm```
+```
+dotnet tool install --global argentini.ollamafarm
+```
 
 You should relaunch Terminal/cmd/PowerShell so that the system path will be reloaded and the *ollamafarm* command can be found. If you've previously installed the *dotnet* runtime, this won't be necessary.
 
