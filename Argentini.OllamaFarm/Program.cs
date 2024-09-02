@@ -140,13 +140,40 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
         {
             foreach (var _host in stateService.Hosts)
             {
-                if (_host is not { IsOnline: true, IsBusy: false })
+                if (_host.IsBusy || (_host.IsOffline && _host.NextPing > DateTime.Now))
                     continue;
-                
-                _host.IsBusy = true;
-                host = _host;
 
-                break;
+                _host.IsBusy = true;
+
+                var wasOnline = _host.IsOnline;
+                var wasOffline = _host.IsOnline == false;
+                
+                if (_host.NextPing <= DateTime.Now)
+                    await StateService.ServerAvailableAsync(_host);
+                
+                if (_host.IsOffline && wasOnline)
+                {
+                    _host.IsBusy = false;
+                    await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Offline; Retry in {StateService.RetrySeconds} secs");
+                }
+
+                if (_host.IsOnline && wasOffline)
+                {
+                    _host.IsBusy = false;
+                    await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Back Online");
+                }
+
+                if (_host.IsOffline)
+                {
+                    _host.IsBusy = false;
+                }
+                else
+                {
+                    if (host is not null)
+                        _host.IsBusy = false;
+                    else
+                        host = _host;
+                }
             }
 
             if (host is null)
@@ -172,6 +199,10 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
 
                     var httpResponse = await httpClient.SendAsync(ollamaRequest, HttpCompletionOption.ResponseHeadersRead);
                     var responseJson = await httpResponse.Content.ReadAsStringAsync();
+
+                    responseJson = responseJson.TrimStart('{');
+                    responseJson = $"{{\"farm-host\": \"{host.Address}:{host.Port}\"," + responseJson;
+                    
                     var jsonObject = JsonSerializer.Deserialize<object>(responseJson);
 
                     return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
@@ -179,6 +210,8 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
             }
             catch (Exception e)
             {
+                await StateService.ServerAvailableAsync(host);
+
                 var result = new
                 {
                     Error = e.Message

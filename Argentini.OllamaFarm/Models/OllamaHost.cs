@@ -11,4 +11,5 @@ public sealed class OllamaHost
     public DateTime NextPing { get; set; } = DateTime.Now;
     public bool IsBusy { get; set; }
     public bool IsOnline { get; set; }
+    public bool IsOffline => IsOnline == false;
 }
