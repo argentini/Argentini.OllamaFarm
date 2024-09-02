@@ -20,9 +20,10 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
-var stateService = new StateService();
+var _stateService = new StateService();
 
-builder.Services.AddSingleton(stateService);
+builder.Services.AddSingleton(_stateService);
+builder.Services.AddHttpClient();
 
 #if DEBUG
 
@@ -93,7 +94,7 @@ else
                 Environment.Exit(1);
             }
 
-            stateService.Port = listenPort;
+            _stateService.Port = listenPort;
 
             continue;
         }
@@ -118,7 +119,7 @@ else
             Environment.Exit(1);
         }
         
-        stateService.Hosts.Add(new OllamaHost
+        _stateService.Hosts.Add(new OllamaHost
         {
             Address = segments[0],
             Port = port,
@@ -131,10 +132,10 @@ else
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenAnyIP(stateService.Port);
+    serverOptions.ListenAnyIP(_stateService.Port);
 });
 
-foreach (var host in stateService.Hosts)
+foreach (var host in _stateService.Hosts)
 {
     await StateService.ServerAvailableAsync(host);
     Console.WriteLine($"Using Ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
@@ -143,14 +144,14 @@ foreach (var host in stateService.Hosts)
         host.NextPing = DateTime.Now;
 }
 
-Console.WriteLine($"Listening on port {stateService.Port}; press ESC or Control+C to exit");
+Console.WriteLine($"Listening on port {_stateService.Port}; press ESC or Control+C to exit");
 Console.WriteLine();
 
 var app = builder.Build();
 
 #region Endpoints
 
-app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResponse response) =>
+app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResponse response, StateService stateService, HttpClient httpClient) =>
     {
         var jsonRequest = string.Empty;
 
@@ -227,57 +228,65 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
         
         try
         {
-            Console.WriteLine($"{DateTime.Now:s} => Sending request to host {host.Address}:{host.Port}");
+            var timer = new Stopwatch();
+            var requestId = jsonRequest.Crc32();
             
-            using (var httpClient = new HttpClient())
+            timer.Start();
+            
+            Console.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port} (#{requestId})");
+            
+            var completion = farmModel?.stream ?? false
+                ? HttpCompletionOption.ResponseHeadersRead
+                : HttpCompletionOption.ResponseContentRead;                
+
+            var httpResponse = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
             {
-                var completion = farmModel?.stream ?? false
-                    ? HttpCompletionOption.ResponseHeadersRead
-                    : HttpCompletionOption.ResponseContentRead;                
+                Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
+                
+            }, completion, cancellationTokenSource.Token);
 
-                var httpResponse = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
+            if (farmModel?.stream ?? false)
+            {
+                response.ContentType = "application/json";
+
+                await using (var stream = await httpResponse.Content.ReadAsStreamAsync())
                 {
-                    Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
-                    
-                }, completion, cancellationTokenSource.Token);
-
-                if (farmModel?.stream ?? false)
-                {
-                    response.ContentType = "application/json";
-
-                    await using (var stream = await httpResponse.Content.ReadAsStreamAsync())
+                    using (var reader = new StreamReader(stream))
                     {
-                        using (var reader = new StreamReader(stream))
+                        while (reader.EndOfStream == false && cancellationTokenSource.IsCancellationRequested == false)
                         {
-                            while (reader.EndOfStream == false && cancellationTokenSource.IsCancellationRequested == false)
-                            {
-                                var line = await reader.ReadLineAsync(cancellationTokenSource.Token) + '\n';
+                            var line = await reader.ReadLineAsync(cancellationTokenSource.Token) + '\n';
 
-                                if (string.IsNullOrEmpty(line))
-                                    continue;
-                                
-                                line = line.TrimStart('{');
-                                line = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + line;
+                            if (string.IsNullOrEmpty(line))
+                                continue;
+                            
+                            line = line.TrimStart('{');
+                            line = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + line;
 
-                                await response.Body.WriteAsync(Encoding.UTF8.GetBytes(line), cancellationTokenSource.Token);
-                                await response.Body.FlushAsync(cancellationTokenSource.Token);
-                            }
+                            await response.Body.WriteAsync(Encoding.UTF8.GetBytes(line), cancellationTokenSource.Token);
+                            await response.Body.FlushAsync(cancellationTokenSource.Token);
                         }
                     }
+                }
 
-                    return Results.Empty;
-                }
-                else
-                {
-                    var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationTokenSource.Token);
-                    
-                    responseJson = responseJson.TrimStart().TrimStart('{');
-                    responseJson = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + responseJson;
-                    
-                    var jsonObject = JsonSerializer.Deserialize<JsonDocument>(responseJson);
-                    
-                    return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
-                }
+                timer.Stop();
+                Console.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port} (#{requestId}) streamed in {(double)timer.ElapsedMilliseconds / 1000:F2}s");
+
+                return Results.Empty;
+            }
+            else
+            {
+                var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationTokenSource.Token);
+
+                responseJson = responseJson.TrimStart().TrimStart('{');
+                responseJson = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + responseJson;
+                
+                var jsonObject = JsonSerializer.Deserialize<object>(responseJson);
+
+                timer.Stop();
+                Console.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port} (#{requestId}) complete in {(double)timer.ElapsedMilliseconds / 1000:F2}s");
+
+                return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
             }
         }
         catch (Exception e)
