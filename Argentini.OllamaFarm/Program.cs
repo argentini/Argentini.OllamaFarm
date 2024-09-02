@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Reflection;
+using System.Text.Json;
 using Argentini.OllamaFarm.Models;
 using Argentini.OllamaFarm.Services;
 
@@ -21,7 +23,13 @@ var stateService = new StateService();
 
 builder.Services.AddSingleton(stateService);
 
-#region Load Settings
+#if DEBUG
+
+args = ["localhost","10.0.10.3"];
+
+#endif
+
+#region Process Arguments
 
 if (args.Length == 0)
 {
@@ -97,7 +105,8 @@ else
         stateService.Hosts.Add(new OllamaHost
         {
             Address = segments[0],
-            Port = port
+            Port = port,
+            IsOnline = true
         });
     }
 }
@@ -118,55 +127,74 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    // May use this block later
+    // Reserved for potential use
 }
 
-app.MapPost("/api/generate", async Task<IResult> (HttpRequest request) =>
+#region Endpoints
+
+app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
     {
+        OllamaHost? host = null;
+
+        while (host is null)
+        {
+            foreach (var _host in stateService.Hosts)
+            {
+                if (_host is not { IsOnline: true, IsBusy: false })
+                    continue;
+                
+                _host.IsBusy = true;
+                host = _host;
+
+                break;
+            }
+
+            if (host is null)
+                await Task.Delay(25);
+        }
+
         using (var reader = new StreamReader(request.Body))
         {
-            var json = await reader.ReadToEndAsync();
-            
-            await Console.Out.WriteLineAsync(json);
-            
-            
-            
-            
-            
-            
-            
-            
-            
+            try
+            {
+                var json = await reader.ReadToEndAsync();
+
+                await Console.Out.WriteLineAsync($"Sending to host => {host.Address}:{host.Port}");
+                
+                var ollamaRequest = new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromSeconds(host.RequestTimeoutSeconds);
+
+                    var httpResponse = await httpClient.SendAsync(ollamaRequest, HttpCompletionOption.ResponseHeadersRead);
+                    var responseJson = await httpResponse.Content.ReadAsStringAsync();
+                    var jsonObject = JsonSerializer.Deserialize<object>(responseJson);
+
+                    return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
+                }
+            }
+            catch (Exception e)
+            {
+                var result = new
+                {
+                    Error = e.Message
+                };
+                
+                return Results.Json(result, contentType: "application/json", statusCode: (int)HttpStatusCode.InternalServerError);
+            }
+            finally
+            {
+                host.IsBusy = false;
+            }
         }
-        
-        return Results.Ok();
     })
     .WithName("Generate")
     .WithOpenApi();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
+#endregion
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
