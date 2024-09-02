@@ -28,34 +28,36 @@ dotnet tool uninstall --global argentini.ollamafarm
 
 Ollama Farm is a system-level command line interface application (CLI). After installing you can access Ollama Farm at any time.
 
-To get help on the available commands, just run `ollamafarm` in Terminal, cmd, or PowerShell.
+To get help on the available commands, just run `ollamafarm` in Terminal, cmd, or PowerShell. This will launch the application in help mode which displays the commands and options.
 
 ```
 ollamafarm
 ```
 
-This will launch the application in help mode which displays the commands and options. For example, to launch it with one or more server addresses running the ollama API service on the default port:
+For example, you can launch Ollama Farm with one or more host addresses to include in the farm:
 
 ```
 ollamafarm localhost 192.168.0.5 192.168.0.6
 ```
 
-It will listen on port 4444 for ollama API requests to `/api/generate`. You would simply POST the same JSON request as you would to the ollama API service. The request will get sent to the first available host.
+In this example, Ollama Farm will listen on port 4444 for requests to `/api/generate`. The requests are standard Ollama API REST requests: HTTP POST with a JSON payload. Requests will get sent to the first available host in the farm.
 
-You can also change the listening port:
+You can also change the default Ollama Farm listening port of 4444:
 
 ```
 ollamafarm --port 5555 localhost 192.168.0.5 192.168.0.6
 ```
 
-And if you run your ollama hosts on a custom port, just use colon syntax:
+And if you run any ollama hosts on a port other than 11434, just specify the port in the host names using colon syntax:
 
 ```
 ollamafarm --port 5555 localhost:12345 192.168.0.5 192.168.0.6
 ```
 ## Ollama Farm Requests
 
-Make Ollama API requests to this service and they will be routed to one of the Ollama API hosts in the farm. Requests should be sent to this service (default port 4444) and follow the standard Ollama JSON request body format (HTTP POST to **/api/generate/**). *Streaming is supported*.
+Requests made to the Ollama Farm service will be routed to one of the available Ollama API hosts in the farm. Requests should be sent to this service (default port 4444) following the standard Ollama JSON request format (HTTP POST to **/api/generate/**). *Streaming is supported*.
+
+Hosts are checked periodically and are taken offline when they are unavailable. They are also brought back online when they become available.
 
 **To optimize performance Ollama Farm restricts each host to processing one request at a time.** When all hosts are busy REST calls return status code **429** (too many requests). This allows requesters to poll until a resource is available.
 
