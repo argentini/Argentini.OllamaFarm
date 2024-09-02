@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using Argentini.OllamaFarm.Models;
+using Microsoft.Extensions.ObjectPool;
 
 namespace Argentini.OllamaFarm.Services;
 
@@ -10,6 +11,7 @@ public sealed class StateService
     public int Port { get; set; } = 4444;
     public static int RetrySeconds => 30;
     public ConcurrentBag<OllamaHost> Hosts { get; } = [];
+    public ObjectPool<StringBuilder> StringBuilderPool { get; } = new DefaultObjectPoolProvider().CreateStringBuilderPool();
 
     #endregion
     

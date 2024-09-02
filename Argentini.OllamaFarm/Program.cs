@@ -134,7 +134,7 @@ var app = builder.Build();
 
 #region Endpoints
 
-app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
+app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResponse response) =>
     {
         var jsonRequest = string.Empty;
 
@@ -213,22 +213,75 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
             
             using (var httpClient = new HttpClient())
             {
-                httpClient.Timeout = TimeSpan.FromSeconds(host.RequestTimeoutSeconds);
+                var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(host.RequestTimeoutSeconds));
+                var completion = farmModel?.stream ?? false
+                    ? HttpCompletionOption.ResponseHeadersRead
+                    : HttpCompletionOption.ResponseContentRead;                
 
                 var httpResponse = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
                 {
                     Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
                     
-                }, HttpCompletionOption.ResponseHeadersRead);
+                }, completion, cancellationTokenSource.Token);
 
-                var responseJson = await httpResponse.Content.ReadAsStringAsync();
-                
-                responseJson = responseJson.TrimStart('{');
-                responseJson = $"{{\"farm_host\": \"{host.Address}:{host.Port}\"," + responseJson;
-                
-                var jsonObject = JsonSerializer.Deserialize<JsonDocument>(responseJson);
-                
-                return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
+                if (farmModel?.stream == true)
+                {
+                    response.ContentType = "application/json";
+                    
+                    await using (var responseStream = await httpResponse.Content.ReadAsStreamAsync())
+                    {
+                        var jsonBuffer = stateService.StringBuilderPool.Get();
+
+                        try
+                        {
+                            var buffer = new byte[8192];
+                            var bytesRead = 0;
+
+                            while ((bytesRead = await responseStream.ReadAsync(buffer)) > 0)
+                            {
+                                var chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                                jsonBuffer.Append(chunk);
+
+                                if (jsonBuffer.ToString().Trim().EndsWith('}') == false)
+                                    continue;
+
+                                var jsonChunk = jsonBuffer.ToString();
+
+                                jsonChunk = jsonChunk.TrimStart('{');
+                                jsonChunk = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + jsonChunk;
+
+                                jsonBuffer.Clear();
+
+                                await response.Body.WriteAsync(Encoding.UTF8.GetBytes(jsonChunk));
+                                await response.Body.FlushAsync();
+                            }
+
+                            if (jsonBuffer.Length > 0)
+                            {
+                                await response.Body.WriteAsync(Encoding.UTF8.GetBytes(jsonBuffer.ToString()));
+                                await response.Body.FlushAsync();
+                            }
+                        }
+                        finally
+                        {
+                            stateService.StringBuilderPool.Return(jsonBuffer);
+                        }
+                    }
+
+                    return Results.Empty;
+                }
+                else
+                {
+                    var responseJson = await httpResponse.Content.ReadAsStringAsync();
+                    
+                    responseJson = responseJson.TrimStart('{');
+                    responseJson = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + responseJson;
+                    
+                    var jsonObject = JsonSerializer.Deserialize<JsonDocument>(responseJson);
+                    
+                    return Results.Json(jsonObject, contentType: "application/json", statusCode: (int)httpResponse.StatusCode);
+                }
             }
         }
         catch (Exception e)
