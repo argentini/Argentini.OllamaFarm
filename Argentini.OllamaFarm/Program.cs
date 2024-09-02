@@ -121,6 +121,29 @@ if (app.Environment.IsDevelopment())
     // May use this block later
 }
 
+app.MapPost("/api/generate", async Task<IResult> (HttpRequest request) =>
+    {
+        using (var reader = new StreamReader(request.Body))
+        {
+            var json = await reader.ReadToEndAsync();
+            
+            await Console.Out.WriteLineAsync(json);
+            
+            
+            
+            
+            
+            
+            
+            
+            
+        }
+        
+        return Results.Ok();
+    })
+    .WithName("Generate")
+    .WithOpenApi();
+
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
