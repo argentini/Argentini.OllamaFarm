@@ -118,8 +118,6 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(stateService.Port);
 });
 
-await Console.Out.WriteLineAsync($"Listening on port {stateService.Port}");
-
 foreach (var host in stateService.Hosts)
 {
     await StateService.ServerAvailableAsync(host);
@@ -128,6 +126,9 @@ foreach (var host in stateService.Hosts)
     if (host.IsOffline)
         host.NextPing = DateTime.Now;
 }
+
+await Console.Out.WriteLineAsync($"Listening on port {stateService.Port}; press ESC or Control+C to exit");
+await Console.Out.WriteLineAsync();
 
 var app = builder.Build();
 
@@ -243,4 +244,31 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
 
 #endregion
 
-app.Run();
+var cts = new CancellationTokenSource();
+
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+    Console.Out.WriteLineAsync($"{DateTime.Now:s} => Control+C pressed, exiting...");
+};
+
+_ = Task.Run(async () =>
+{
+    while (cts.Token.IsCancellationRequested == false)
+    {
+        if (Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(intercept: true);
+
+            if (key.Key == ConsoleKey.Escape)
+            {
+                cts.Cancel();
+                await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Escape key pressed, exiting...");
+            }
+        }
+        await Task.Delay(100); // Check every 100ms
+    }
+});
+
+await app.RunAsync(cts.Token);
