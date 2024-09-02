@@ -56,7 +56,6 @@ Make Ollama API requests to this service and they will be routed to one of the O
 ```
 {
     "farm_host": "localhost",
-    "model": "gemma2:27b-instruct-q8_0",
     ...
 }
 ```
