@@ -12,6 +12,18 @@ dotnet tool install --global argentini.ollamafarm
 
 You should relaunch Terminal/cmd/PowerShell so that the system path will be reloaded and the *ollamafarm* command can be found. If you've previously installed the *dotnet* runtime, this won't be necessary.
 
+You can update to the latest version using the command below.
+
+```
+dotnet tool update --global argentini.ollamafarm
+```
+
+You can remove the tool from your system using the command below.
+
+```
+dotnet tool uninstall --global argentini.ollamafarm
+```
+
 ## Usage
 
 Ollama Farm is a system-level command line interface application (CLI). After installing you can access Ollama Farm at any time.
