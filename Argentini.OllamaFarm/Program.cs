@@ -121,7 +121,7 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 foreach (var host in stateService.Hosts)
 {
     await StateService.ServerAvailableAsync(host);
-    await Console.Out.WriteLineAsync($"Using ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
+    await Console.Out.WriteLineAsync($"Using Ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
 
     if (host.IsOffline)
         host.NextPing = DateTime.Now;
@@ -202,7 +202,7 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
         {
             return Results.Json(new
             {
-                Message = requestedHost == string.Empty ? "All ollama hosts are currently busy" : $"Requested host {requestedHost} is currently busy"
+                Message = requestedHost == string.Empty ? "All Ollama hosts are currently busy" : $"Requested host {requestedHost} is currently busy"
                 
             }, contentType: "application/json", statusCode: (int)HttpStatusCode.TooManyRequests);
         }
