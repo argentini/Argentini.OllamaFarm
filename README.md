@@ -18,18 +18,26 @@ Ollama Farm is a system-level command line interface application (CLI). After in
 
 To get help on the available commands, just run `ollamafarm` in Terminal, cmd, or PowerShell.
 
-```ollamafarm```
+```
+ollamafarm
+```
 
 This will launch the application in help mode which displays the commands and options. For example, to launch it with one or more server addresses running the ollama API service on the default port:
 
-```ollamafarm localhost 192.168.0.5 192.168.0.6```
+```
+ollamafarm localhost 192.168.0.5 192.168.0.6
+```
 
 It will listen on port 4444 for ollama API requests to `/api/generate`. You would simply POST the same JSON request as you would to the ollama API service. The request will get sent to the first available host.
 
 You can also change the listening port:
 
-```ollamafarm --port 5555 localhost 192.168.0.5 192.168.0.6```
+```
+ollamafarm --port 5555 localhost 192.168.0.5 192.168.0.6
+```
 
 And if you run your ollama hosts on a custom port, just use colon syntax:
 
-```ollamafarm --port 5555 localhost:12345 192.168.0.5 192.168.0.6```
+```
+ollamafarm --port 5555 localhost:12345 192.168.0.5 192.168.0.6
+```
