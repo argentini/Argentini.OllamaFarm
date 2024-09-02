@@ -34,17 +34,6 @@ args = ["localhost","10.0.10.3"];
 
 if (args.Length == 0)
 {
-    "".WriteToConsole(maxConsoleWidth);;
-    "Make Ollama API requests to this service instead and they will be routed to one of the Ollama API hosts in the pool. Requests should be sent to this service (default port 4444) and follow the standard Ollama JSON request body format (HTTP POST to /api/generate/).".WriteToConsole(maxConsoleWidth);
-    "".WriteToConsole(maxConsoleWidth);
-    "Additions to Ollama API requests/responses:".WriteToConsole(maxConsoleWidth);
-    "-".Repeat(maxConsoleWidth).WriteToConsole(maxConsoleWidth);
-    "farm_host (requests) : Request a specific host (e.g. localhost:11434)".WriteToConsole(maxConsoleWidth);
-    "farm_host (response) : Identify the host used".WriteToConsole(maxConsoleWidth);
-    "".WriteToConsole(maxConsoleWidth);
-    "Example:".WriteToConsole(maxConsoleWidth);
-    "{ \"farm_host\": \"localhost\", \"model\": ... }".WriteToConsole(maxConsoleWidth);
-    "-".Repeat(maxConsoleWidth).WriteToConsole(maxConsoleWidth);
     "".WriteToConsole(maxConsoleWidth);
     "Usage:".WriteToConsole(maxConsoleWidth);
     "    ollamafarm [[--port | -p] [port]] [host host host ...]".WriteToConsole(maxConsoleWidth);
@@ -57,6 +46,21 @@ if (args.Length == 0)
     "    ollamafarm localhost 10.0.10.1 10.0.10.3".WriteToConsole(maxConsoleWidth);
     "    ollamafarm --port 1234 localhost 10.0.10.1 10.0.10.3".WriteToConsole(maxConsoleWidth);
     "    ollamafarm --port 1234 localhost:11234 10.0.10.1 10.0.10.3".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    
+    "Ollama Farm Requests".WriteToConsole(maxConsoleWidth);
+    "-".Repeat(maxConsoleWidth).WriteToConsole(maxConsoleWidth);
+    "Make Ollama API requests to this service and they will be routed to one of the Ollama API hosts in the farm. Requests should be sent to this service (default port 4444) and follow the standard Ollama JSON request body format (HTTP POST to /api/generate/). Streaming is supported.".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "To optimize performance Ollama Farm restricts each host to processing one request at a time. When all hosts are busy REST calls return status code 429 (too many requests). This allows requesters to poll until a resource is available.".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Additional properties:".WriteToConsole(maxConsoleWidth);
+    "    farm_host (requests) : Request a specific host (e.g. localhost:11434)".WriteToConsole(maxConsoleWidth);
+    "    farm_host (response) : Identify the host used".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
+    "Example:".WriteToConsole(maxConsoleWidth);
+    "    { \"farm_host\": \"localhost\", \"model\": ... }".WriteToConsole(maxConsoleWidth);
+    "".WriteToConsole(maxConsoleWidth);
     
     Environment.Exit(0);
 }
