@@ -209,7 +209,7 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
                     var responseJson = await httpResponse.Content.ReadAsStringAsync();
 
                     responseJson = responseJson.TrimStart('{');
-                    responseJson = $"{{\"farm-host\": \"{host.Address}:{host.Port}\"," + responseJson;
+                    responseJson = $"{{\"farm_host\": \"{host.Address}:{host.Port}\"," + responseJson;
                     
                     var jsonObject = JsonSerializer.Deserialize<object>(responseJson);
                     
