@@ -131,11 +131,6 @@ foreach (var host in stateService.Hosts)
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    // Reserved for potential use
-}
-
 #region Endpoints
 
 app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
@@ -170,13 +165,13 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
                     if (_host.IsOffline && wasOnline)
                     {
                         _host.IsBusy = false;
-                        await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Offline; Retry in {StateService.RetrySeconds} secs");
+                        await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} offline; retry in {StateService.RetrySeconds} secs");
                     }
 
                     if (_host.IsOnline && wasOffline)
                     {
                         _host.IsBusy = false;
-                        await Console.Out.WriteLineAsync($"Ollama host {_host.Address}:{_host.Port} => Back Online");
+                        await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} back online");
                     }
 
                     if (_host.IsOffline)
@@ -198,7 +193,7 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
 
             try
             {
-                await Console.Out.WriteLineAsync($"Sending to host => {host.Address}:{host.Port}");
+                await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Sending request to host {host.Address}:{host.Port}");
                 
                 var ollamaRequest = new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
                 {
@@ -227,14 +222,14 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
                 await StateService.ServerAvailableAsync(host);
 
                 if (host.IsOffline)
-                    await Console.Out.WriteLineAsync($"Ollama host {host.Address}:{host.Port} => Offline; Retry in {StateService.RetrySeconds} secs");
+                    await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {host.Address}:{host.Port} offline; retry in {StateService.RetrySeconds} secs");
             }
             finally
             {
                 host.IsBusy = false;
             }
             
-            await Console.Out.WriteLineAsync($"Ollama host {host.Address}:{host.Port} => Unavailable, using new host...");
+            await Console.Out.WriteLineAsync($"{DateTime.Now:s} => Ollama host {host.Address}:{host.Port} => unavailable, using new host...");
             
         } while (cancellationTokenSource.IsCancellationRequested == false);
         
@@ -244,9 +239,7 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request) =>
         };
                 
         return Results.Json(result, contentType: "application/json", statusCode: (int)HttpStatusCode.InternalServerError);
-    })
-    .WithName("Generate")
-    .WithOpenApi();
+    });
 
 #endregion
 
