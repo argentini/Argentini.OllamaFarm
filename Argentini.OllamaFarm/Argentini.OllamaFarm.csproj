@@ -5,9 +5,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
-        <AssemblyVersion>1.0.1.0</AssemblyVersion>
-        <FileVersion>1.0.1.0</FileVersion>
-        <PackageVersion>1.0.1</PackageVersion>
+        <AssemblyVersion>1.0.2.0</AssemblyVersion>
+        <FileVersion>1.0.2.0</FileVersion>
+        <PackageVersion>1.0.2</PackageVersion>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>ollamafarm</ToolCommandName>
         <PackageOutputPath>./nupkg</PackageOutputPath>
@@ -26,7 +26,7 @@
         <PackageProjectUrl>https://github.com/argentini/Argentini.OllamaFarm</PackageProjectUrl>
         <RepositoryUrl>https://github.com/argentini/Argentini.OllamaFarm</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageReleaseNotes>Added host request, streaming support</PackageReleaseNotes>
+        <PackageReleaseNotes>Using singleton HttpClient, added output of request IDs, added output of request completion with timer</PackageReleaseNotes>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageIcon>ollamafarm-icon.png</PackageIcon>
