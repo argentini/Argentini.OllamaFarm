@@ -217,10 +217,28 @@ app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResp
 
         if (host is null)
         {
+            if (string.IsNullOrEmpty(requestedHost))
+                return Results.Json(new
+                {
+                    Message = "All Ollama hosts are busy"
+                
+                }, contentType: "application/json", statusCode: (int)HttpStatusCode.TooManyRequests);
+            
+            var _host = stateService.Hosts.FirstOrDefault(h => h.FullAddress.Equals(requestedHost, StringComparison.InvariantCultureIgnoreCase));
+
+            if (_host is null)
+            {
+                return Results.Json(new
+                {
+                    Message = $"Requested host {requestedHost} does not exist"
+
+                }, contentType: "application/json", statusCode: (int)HttpStatusCode.TooManyRequests);
+            }
+
             return Results.Json(new
             {
-                Message = requestedHost == string.Empty ? "All Ollama hosts are currently busy" : $"Requested host {requestedHost} is currently busy"
-                
+                Message = $"Requested host {requestedHost} is {(_host.IsOffline ? "offline" : "busy")}"
+            
             }, contentType: "application/json", statusCode: (int)HttpStatusCode.TooManyRequests);
         }
 
