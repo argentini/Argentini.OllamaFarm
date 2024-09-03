@@ -6,8 +6,8 @@ public sealed class OllamaHost
     public int Port { get; set; } = 11434;
     public string FullAddress => $"{Address}:{Port}";
 
-    public int ConnectTimeoutSeconds { get; set; } = 15;
-    public int RequestTimeoutSeconds { get; set; } = 300;
+    public static int ConnectTimeoutSeconds => 15;
+    public static int RequestTimeoutSeconds => 900;
 
     public DateTime NextPing { get; set; } = DateTime.Now;
     public bool IsBusy { get; set; }

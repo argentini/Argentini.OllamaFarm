@@ -101,7 +101,7 @@ public static class Identify
 
     #region App Version Methods
 
-    public static async Task<string> AppMajorVersionAsync(Assembly assembly)
+    public static string AppMajorVersion(Assembly assembly)
     {
         var result = string.Empty;
 
@@ -112,13 +112,13 @@ public static class Identify
 
         catch (Exception e)
         {
-            await Console.Out.WriteLineAsync($"AppMajorVersion Exception: {e.Message}");
+            Console.WriteLine($"AppMajorVersion Exception: {e.Message}");
         }
 
         return result ?? string.Empty;
     }
 
-    public static async Task<string> AppMinorVersionAsync(Assembly assembly)
+    public static string AppMinorVersion(Assembly assembly)
     {
         var result = string.Empty;
 
@@ -129,13 +129,13 @@ public static class Identify
 
         catch (Exception e)
         {
-            await Console.Out.WriteLineAsync($"AppMinorVersion Exception: {e.Message}");
+            Console.WriteLine($"AppMinorVersion Exception: {e.Message}");
         }
 
         return result ?? string.Empty;
     }
 
-    public static async Task<string> AppBuildVersionAsync(Assembly assembly)
+    public static string AppBuildVersion(Assembly assembly)
     {
         var result = string.Empty;
 
@@ -146,13 +146,13 @@ public static class Identify
 
         catch (Exception e)
         {
-            await Console.Out.WriteLineAsync($"AppBuildVersion Exception: {e.Message}");
+            Console.WriteLine($"AppBuildVersion Exception: {e.Message}");
         }
 
         return result ?? string.Empty;
     }
 
-    public static async Task<string> AppRevisionVersionAsync(Assembly assembly)
+    public static string AppRevisionVersion(Assembly assembly)
     {
         var result = string.Empty;
 
@@ -163,24 +163,24 @@ public static class Identify
 
         catch (Exception e)
         {
-            await Console.Out.WriteLineAsync($"AppRevisionVersion Exception: {e.Message}");
+            Console.WriteLine($"AppRevisionVersion Exception: {e.Message}");
         }
 
         return result ?? string.Empty;
     }
 
-    public static async Task<string> VersionAsync(Assembly assembly)
+    public static string Version(Assembly assembly)
     {
         var result = string.Empty;
 
         try
         {
-            result = await AppMajorVersionAsync(assembly) + "." + await AppMinorVersionAsync(assembly) + "." + await AppBuildVersionAsync(assembly);
+            result = AppMajorVersion(assembly) + "." + AppMinorVersion(assembly) + "." + AppBuildVersion(assembly);
         }
 
         catch (Exception e)
         {
-            await Console.Out.WriteLineAsync($"Version Exception: {e.Message}");
+            Console.WriteLine($"Version Exception: {e.Message}");
         }
 
         return result;

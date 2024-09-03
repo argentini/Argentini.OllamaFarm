@@ -1,6 +1,5 @@
 using System.Net.Sockets;
 using Argentini.OllamaFarm.Models;
-using Microsoft.Extensions.ObjectPool;
 
 namespace Argentini.OllamaFarm.Services;
 
@@ -10,7 +9,7 @@ public sealed class StateService
     
     public int Port { get; set; } = 4444;
     public static int RetrySeconds => 30;
-    public ConcurrentBag<OllamaHost> Hosts { get; } = [];
+    public ConcurrentBag<OllamaHost> Hosts { get; set; } = [];
     
     #endregion
     
@@ -24,7 +23,7 @@ public sealed class StateService
             
             using var tcpClient = new TcpClient();
 
-            var cancellationTokenSource = new CancellationTokenSource(host.ConnectTimeoutSeconds);
+            var cancellationTokenSource = new CancellationTokenSource(OllamaHost.ConnectTimeoutSeconds);
 
             await tcpClient.ConnectAsync(host.Address, host.Port, cancellationTokenSource.Token);
 
