@@ -8,6 +8,7 @@ public sealed class StateService
     #region Properties
     
     public int Port { get; set; } = 4444;
+    public int DelayMs { get; set; }
     public static int RetrySeconds => 30;
     public ConcurrentBag<OllamaHost> Hosts { get; set; } = [];
     

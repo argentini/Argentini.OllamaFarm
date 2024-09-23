@@ -12,12 +12,13 @@ var _stateService = new StateService();
 
 #if DEBUG
 
-args = ["localhost","10.0.10.3"];
+args = ["--delay", "0", "localhost","10.0.10.3"];
 
 #endif
 
 _stateService.Port = args.GetListenPort();
 _stateService.Hosts = args.GetHosts();
+_stateService.DelayMs = args.GetDelayMs();
 
 #endregion
 
