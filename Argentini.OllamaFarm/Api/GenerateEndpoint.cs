@@ -37,7 +37,18 @@ public static class GenerateEndpoint
                 
                 OllamaHost? host = null;
 
-                foreach (var _host in stateService.Hosts)
+                stateService.SingleSemaphore.WaitOne();
+
+                var hosts = stateService.Hosts.OrderBy(h => h.Index == stateService.HostIndex ? 0 : 1).ThenBy(h => h.Index).ToList();
+
+                stateService.HostIndex++;
+
+                if (stateService.HostIndex >= stateService.Hosts.Count - 1)
+                    stateService.HostIndex = 0;
+
+                stateService.SingleSemaphore.Release();
+                
+                foreach (var _host in hosts)
                 {
                     if (_host.IsBusy || (_host.IsOffline && _host.NextPing > DateTime.Now))
                         continue;

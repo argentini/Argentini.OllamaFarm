@@ -113,6 +113,7 @@ public static class Arguments
             
             hosts.Add(new OllamaHost
             {
+                Index = hosts.Count,
                 Address = segments[0],
                 Port = port,
                 IsOnline = true
