@@ -43,7 +43,7 @@ public static class GenerateEndpoint
 
                 stateService.HostIndex++;
 
-                if (stateService.HostIndex >= stateService.Hosts.Count - 1)
+                if (stateService.HostIndex > stateService.Hosts.Count - 1)
                     stateService.HostIndex = 0;
 
                 stateService.SingleSemaphore.Release();
