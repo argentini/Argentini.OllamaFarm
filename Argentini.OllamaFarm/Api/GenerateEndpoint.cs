@@ -11,15 +11,17 @@ public static class GenerateEndpoint
     {
         app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResponse response, StateService stateService, HttpClient httpClient) =>
             {
-                var totalTimer = new Stopwatch();
                 var jsonRequest = string.Empty;
                 var maxHostOutputLength = 0;
+                var requestNumber = 0L;
+                var timer = new Stopwatch();
+                var timestamp = DateTime.Now;
 
-                totalTimer.Start();
+                OllamaHost? host = null;
 
                 foreach (var _host in stateService.Hosts)
                 {
-                    var i = (_host.FullHostAddress + " / " + _host.ActiveRequestsCount).Length;
+                    var i = _host.FullHostAddress.Length;
 
                     if (i > maxHostOutputLength)
                         maxHostOutputLength = i;
@@ -46,8 +48,6 @@ public static class GenerateEndpoint
                     if (requestedHost.Contains(':') == false)
                         requestedHost = $"{requestedHost}:11434";
                 }
-                
-                OllamaHost? host = null;
 
                 stateService.SingleSemaphore.WaitOne();
 
@@ -58,8 +58,6 @@ public static class GenerateEndpoint
                 if (stateService.HostIndex > stateService.Hosts.Count - 1)
                     stateService.HostIndex = 0;
 
-                stateService.SingleSemaphore.Release();
-                
                 foreach (var _host in hosts)
                 {
                     if (_host.IsNotAvailable || (_host.IsOffline && _host.NextPing > DateTime.Now))
@@ -90,12 +88,15 @@ public static class GenerateEndpoint
                         continue;
 
                     _host.ActiveRequestsCount++;
+                    requestNumber = ++_host.TotalRequestsCount;
 
-                    if (_host.ActiveRequestsCount > _host.MaxConcurrentRequests)
-                        _host.ActiveRequestsCount = _host.MaxConcurrentRequests;
-
+                    if (_host.TotalRequestsCount == long.MaxValue)
+                        _host.TotalRequestsCount = 0;
+                    
                     host = _host;
                 }
+
+                stateService.SingleSemaphore.Release();
 
                 if (host is null)
                 {
@@ -125,11 +126,6 @@ public static class GenerateEndpoint
                 
                 try
                 {
-                    var timer = new Stopwatch();
-                    var requestId = jsonRequest.Crc32();
-                    
-                    ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Request #{requestId:D10}  :  {(host.FullHostAddress + " / " + host.ActiveRequestsCount).PadRight(maxHostOutputLength)}  :  sent");
-                    
                     var completion = farmModel?.stream ?? false
                         ? HttpCompletionOption.ResponseHeadersRead
                         : HttpCompletionOption.ResponseContentRead;                
@@ -170,8 +166,8 @@ public static class GenerateEndpoint
 
                         if (stateService.DelayMs > 0)
                             await Task.Delay(stateService.DelayMs, cancellationTokenSource.Token);
-                        
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Request #{requestId:D10}  :  {(host.FullHostAddress + " / " + host.ActiveRequestsCount).PadRight(maxHostOutputLength)}  :  streamed  :  ollama {TimeSpan.FromMilliseconds(timer.ElapsedMilliseconds).FormatTimer()}  :  total {TimeSpan.FromMilliseconds(totalTimer.ElapsedMilliseconds).FormatTimer()}");
+
+                        ConsoleHelper.WriteLine($"{timestamp:s}  =>  Request # {requestNumber:D19}  =>  {host.FullHostAddress.PadRight(maxHostOutputLength)}  =>  streamed in {TimeSpan.FromMilliseconds(timer.ElapsedMilliseconds).FormatTimer()}");
 
                         return Results.Empty;
                     }
@@ -188,8 +184,8 @@ public static class GenerateEndpoint
 
                         if (stateService.DelayMs > 0)
                             await Task.Delay(stateService.DelayMs, cancellationTokenSource.Token);
-                        
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Request #{requestId:D10}  :  {(host.FullHostAddress + " / " + host.ActiveRequestsCount).PadRight(maxHostOutputLength)}  :  complete  :  ollama {TimeSpan.FromMilliseconds(timer.ElapsedMilliseconds).FormatTimer()}  :  total {TimeSpan.FromMilliseconds(totalTimer.ElapsedMilliseconds).FormatTimer()}");
+
+                        ConsoleHelper.WriteLine($"{timestamp:s}  =>  Request # {requestNumber:D19}  =>  {host.FullHostAddress.PadRight(maxHostOutputLength)}  =>  complete in {TimeSpan.FromMilliseconds(timer.ElapsedMilliseconds).FormatTimer()}");
 
                         return Results.Json(jsonObject, JsonSerializerOptions.Default, "application/json", (int)httpResponse.StatusCode);
                     }

@@ -15,6 +15,7 @@ public sealed class OllamaHost
     public DateTime NextPing { get; set; } = DateTime.Now;
     public int MaxConcurrentRequests { get; set; } = 1;
     public int ActiveRequestsCount { get; set; }
+    public long TotalRequestsCount { get; set; }
     public bool IsOnline { get; set; }
     public bool IsOffline => IsOnline == false;
     public bool IsAvailable => IsOnline && ActiveRequestsCount < MaxConcurrentRequests;

@@ -856,22 +856,7 @@ public static class Strings
 	/// <returns>Formatted timespan</returns>
 	public static string FormatTimer(this TimeSpan timespan, string delimiter = ":")
 	{
-		var seconds = $"{timespan.TotalSeconds:0.000}";
-
-		if (timespan.TotalSeconds < 60)
-			return $"{seconds[..(seconds.IndexOf('.') + 4)]}s";
-
-		seconds = $"{timespan.Seconds:00.000}";
-		
-		if (timespan is { Days: 0, Hours: 0 })
-			return $"{timespan.Minutes:00}m{delimiter}{seconds[..(seconds.IndexOf('.') + 4)]}s";
-
-		if (timespan.Days == 0)
-		{
-			return $"{timespan.Hours:00}h{delimiter}{timespan.Minutes:00}m{delimiter}{seconds[..(seconds.IndexOf('.') + 4)]}s";
-		}
-
-		return $"{timespan.Days:00}d{delimiter}{timespan.Hours:00}h{delimiter}{timespan.Minutes:00}m{delimiter}{seconds[..(seconds.IndexOf('.') + 4)]}s";
+        return $"{timespan.Minutes:#00}m{delimiter}{timespan.Seconds:00}.{timespan.Milliseconds:000}s";
 	}
 	
 	#endregion
