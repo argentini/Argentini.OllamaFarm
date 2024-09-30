@@ -11,8 +11,20 @@ public static class GenerateEndpoint
     {
         app.MapPost("/api/generate/", async Task<IResult> (HttpRequest request, HttpResponse response, StateService stateService, HttpClient httpClient) =>
             {
+                var totalTimer = new Stopwatch();
                 var jsonRequest = string.Empty;
+                var maxHostOutputLength = 0;
 
+                totalTimer.Start();
+
+                foreach (var _host in stateService.Hosts)
+                {
+                    var i = (_host.FullHostAddress + " / " + _host.ActiveRequestsCount).Length;
+
+                    if (i > maxHostOutputLength)
+                        maxHostOutputLength = i;
+                }
+                
                 using (var reader = new StreamReader(request.Body))
                 {
                     jsonRequest = await reader.ReadToEndAsync();
@@ -62,16 +74,16 @@ public static class GenerateEndpoint
                     if (_host.IsOffline && wasOnline)
                     {
                         _host.ActiveRequestsCount = 0;
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} offline; retry in {StateService.RetrySeconds} secs");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Ollama host {_host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs");
                     }
 
                     if (_host.IsOnline && wasOffline)
                     {
                         _host.ActiveRequestsCount = 0;
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} back online");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Ollama host {_host.FullHostAddress} back online");
                     }
 
-                    if (_host.IsOnline == false || host is not null || (string.IsNullOrEmpty(requestedHost) == false && requestedHost.Equals(_host.FullAddress, StringComparison.InvariantCultureIgnoreCase) == false))
+                    if (_host.IsOnline == false || host is not null || (string.IsNullOrEmpty(requestedHost) == false && requestedHost.Equals(_host.FullHostAddress, StringComparison.InvariantCultureIgnoreCase) == false))
                         continue;
 
                     if (_host.IsNotAvailable)
@@ -94,7 +106,7 @@ public static class GenerateEndpoint
                         
                         }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.TooManyRequests);
                     
-                    var _host = stateService.Hosts.FirstOrDefault(h => h.FullAddress.Equals(requestedHost, StringComparison.InvariantCultureIgnoreCase));
+                    var _host = stateService.Hosts.FirstOrDefault(h => h.FullHostAddress.Equals(requestedHost, StringComparison.InvariantCultureIgnoreCase));
 
                     if (_host is null)
                         return Results.BadRequest(new
@@ -116,15 +128,15 @@ public static class GenerateEndpoint
                     var timer = new Stopwatch();
                     var requestId = jsonRequest.Crc32();
                     
-                    timer.Start();
-                    
-                    ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port}/{host.ActiveRequestsCount} (#{requestId})");
+                    ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Request #{requestId:D10}  :  {(host.FullHostAddress + " / " + host.ActiveRequestsCount).PadRight(maxHostOutputLength)}  :  sent");
                     
                     var completion = farmModel?.stream ?? false
                         ? HttpCompletionOption.ResponseHeadersRead
                         : HttpCompletionOption.ResponseContentRead;                
 
-                    var httpResponse = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, $"http://{host.Address}:{host.Port}/api/generate/")
+                    timer.Start();
+
+                    var httpResponse = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, $"{host.FullWebAddress}/api/generate/")
                     {
                         Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
                         
@@ -146,7 +158,7 @@ public static class GenerateEndpoint
                                         continue;
                                     
                                     line = line.TrimStart('{');
-                                    line = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + line;
+                                    line = $"{{\"farm_host\":\"{host.FullHostAddress}\"," + line;
 
                                     await response.Body.WriteAsync(Encoding.UTF8.GetBytes(line), cancellationTokenSource.Token);
                                     await response.Body.FlushAsync(cancellationTokenSource.Token);
@@ -159,7 +171,7 @@ public static class GenerateEndpoint
                         if (stateService.DelayMs > 0)
                             await Task.Delay(stateService.DelayMs, cancellationTokenSource.Token);
                         
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port}/{host.ActiveRequestsCount} (#{requestId}) streamed in {(double)timer.ElapsedMilliseconds / 1000:F2}s{(stateService.DelayMs > 0 ? $" ({stateService.DelayMs}ms delay)" : string.Empty)}");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Request #{requestId:D10}  :  {(host.FullHostAddress + " / " + host.ActiveRequestsCount).PadRight(maxHostOutputLength)}  :  streamed  :  ollama {TimeSpan.FromMilliseconds(timer.ElapsedMilliseconds).FormatTimer()}  :  total {TimeSpan.FromMilliseconds(totalTimer.ElapsedMilliseconds).FormatTimer()}");
 
                         return Results.Empty;
                     }
@@ -168,7 +180,7 @@ public static class GenerateEndpoint
                         var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationTokenSource.Token);
 
                         responseJson = responseJson.TrimStart().TrimStart('{');
-                        responseJson = $"{{\"farm_host\":\"{host.Address}:{host.Port}\"," + responseJson;
+                        responseJson = $"{{\"farm_host\":\"{host.FullHostAddress}\"," + responseJson;
                         
                         var jsonObject = JsonSerializer.Deserialize<object>(responseJson);
 
@@ -177,7 +189,7 @@ public static class GenerateEndpoint
                         if (stateService.DelayMs > 0)
                             await Task.Delay(stateService.DelayMs, cancellationTokenSource.Token);
                         
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port}/{host.ActiveRequestsCount} (#{requestId}) complete in {(double)timer.ElapsedMilliseconds / 1000:F2}s{(stateService.DelayMs > 0 ? $" ({stateService.DelayMs}ms delay)" : string.Empty)}");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Request #{requestId:D10}  :  {(host.FullHostAddress + " / " + host.ActiveRequestsCount).PadRight(maxHostOutputLength)}  :  complete  :  ollama {TimeSpan.FromMilliseconds(timer.ElapsedMilliseconds).FormatTimer()}  :  total {TimeSpan.FromMilliseconds(totalTimer.ElapsedMilliseconds).FormatTimer()}");
 
                         return Results.Json(jsonObject, JsonSerializerOptions.Default, "application/json", (int)httpResponse.StatusCode);
                     }
@@ -196,11 +208,11 @@ public static class GenerateEndpoint
                     await StateService.ServerAvailableAsync(host);
 
                     if (host.IsOffline)
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Ollama host {host.Address}:{host.Port} offline; retry in {StateService.RetrySeconds} secs");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs");
                     
                     return Results.Json(new
                     {
-                        Message = $"{(host.IsOffline ? $"Ollama host {host.Address}:{host.Port} offline; retry in {StateService.RetrySeconds} secs => " : string.Empty)}{e.Message}"
+                        Message = $"{(host.IsOffline ? $"Ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs => " : string.Empty)}{e.Message}"
                         
                     }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.InternalServerError);
                 }

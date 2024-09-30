@@ -5,7 +5,9 @@ public sealed class OllamaHost
     public int Index { get; set; }
     public string Address { get; set; } = string.Empty;
     public int Port { get; set; } = 11434;
-    public string FullAddress => $"{Address}:{Port}";
+    public string FullHostAddress => $"{Address}:{Port}";
+    public string FullWebAddress => $"{Protocol}{Address}:{Port}";
+    public string Protocol { get; set; } = "http://";
 
     public static int ConnectTimeoutSeconds => 15;
     public static int RequestTimeoutSeconds => 900;
