@@ -53,8 +53,6 @@ public static class GenerateEndpoint
                     if (_host.ActiveRequestsCount >= stateService.ConcurrentRequests || (_host.IsOffline && _host.NextPing > DateTime.Now))
                         continue;
 
-                    _host.ActiveRequestsCount++;
-
                     var wasOnline = _host.IsOnline;
                     var wasOffline = _host.IsOnline == false;
                     
@@ -73,14 +71,11 @@ public static class GenerateEndpoint
                         ConsoleHelper.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} back online");
                     }
 
-                    if (_host.IsOnline && host is null && (string.IsNullOrEmpty(requestedHost) || requestedHost.Equals(_host.FullAddress, StringComparison.InvariantCultureIgnoreCase)))
-                    {
+                    if (_host.IsOnline == false || host is not null || (string.IsNullOrEmpty(requestedHost) == false && requestedHost.Equals(_host.FullAddress, StringComparison.InvariantCultureIgnoreCase) == false))
+                        continue;
+                    
+                    if (_host.ActiveRequestsCount < stateService.ConcurrentRequests)
                         host = _host;
-                    }
-                    else
-                    {
-                        _host.ActiveRequestsCount = 0;
-                    }
                 }
 
                 if (host is null)
@@ -111,12 +106,17 @@ public static class GenerateEndpoint
                 
                 try
                 {
+                    host.ActiveRequestsCount++;
+
+                    if (host.ActiveRequestsCount > stateService.ConcurrentRequests)
+                        host.ActiveRequestsCount = stateService.ConcurrentRequests;
+
                     var timer = new Stopwatch();
                     var requestId = jsonRequest.Crc32();
                     
                     timer.Start();
                     
-                    ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port} (#{requestId})");
+                    ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port}/{host.ActiveRequestsCount} (#{requestId})");
                     
                     var completion = farmModel?.stream ?? false
                         ? HttpCompletionOption.ResponseHeadersRead
@@ -157,7 +157,7 @@ public static class GenerateEndpoint
                         if (stateService.DelayMs > 0)
                             await Task.Delay(stateService.DelayMs, cancellationTokenSource.Token);
                         
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port} (#{requestId}) streamed in {(double)timer.ElapsedMilliseconds / 1000:F2}s{(stateService.DelayMs > 0 ? $" ({stateService.DelayMs}ms delay)" : string.Empty)}");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port}/{host.ActiveRequestsCount} (#{requestId}) streamed in {(double)timer.ElapsedMilliseconds / 1000:F2}s{(stateService.DelayMs > 0 ? $" ({stateService.DelayMs}ms delay)" : string.Empty)}");
 
                         return Results.Empty;
                     }
@@ -175,7 +175,7 @@ public static class GenerateEndpoint
                         if (stateService.DelayMs > 0)
                             await Task.Delay(stateService.DelayMs, cancellationTokenSource.Token);
                         
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port} (#{requestId}) complete in {(double)timer.ElapsedMilliseconds / 1000:F2}s{(stateService.DelayMs > 0 ? $" ({stateService.DelayMs}ms delay)" : string.Empty)}");
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s} => Request to {host.Address}:{host.Port}/{host.ActiveRequestsCount} (#{requestId}) complete in {(double)timer.ElapsedMilliseconds / 1000:F2}s{(stateService.DelayMs > 0 ? $" ({stateService.DelayMs}ms delay)" : string.Empty)}");
 
                         return Results.Json(jsonObject, JsonSerializerOptions.Default, "application/json", (int)httpResponse.StatusCode);
                     }
