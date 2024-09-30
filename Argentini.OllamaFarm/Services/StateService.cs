@@ -13,6 +13,7 @@ public sealed class StateService
     public ConcurrentBag<OllamaHost> Hosts { get; set; } = [];
     public int HostIndex { get; set; }
     public Semaphore SingleSemaphore { get; set; } = new (1, 1);
+    public int ConcurrentRequests { get; set; } = 1;
 
     #endregion
     

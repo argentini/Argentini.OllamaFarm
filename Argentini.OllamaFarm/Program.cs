@@ -12,13 +12,14 @@ var _stateService = new StateService();
 
 #if DEBUG
 
-args = ["--delay", "10", "localhost", "10.0.10.3"];
+args = ["--delay", "10", "--concurrency", "2", "localhost", "10.0.10.3"];
 
 #endif
 
 _stateService.Port = args.GetListenPort();
 _stateService.Hosts = args.GetHosts();
 _stateService.DelayMs = args.GetDelayMs();
+_stateService.ConcurrentRequests = args.GetConcurrentRequestsMs();
 
 #endregion
 
@@ -42,6 +43,7 @@ foreach (var host in _stateService.Hosts)
         host.NextPing = DateTime.Now;
 }
 
+ConsoleHelper.WriteLine($"Delay: {_stateService.DelayMs:D}ms, Concurrent Requests Per Host: {_stateService.ConcurrentRequests:D}");
 ConsoleHelper.WriteLine($"Listening on port {_stateService.Port}; press ESC or Control+C to exit");
 ConsoleHelper.WriteLine();
 

@@ -56,22 +56,57 @@ public static class Arguments
             if (args.Length <= ++i)
                 return DefaultDelayMs;
 
-            if (long.TryParse(args[i], out var listenPort) == false)
+            if (int.TryParse(args[i], out var delayMs) == false)
             {
                 ConsoleHelper.WriteLine($"Error => Specified delay ms {args[i]} is invalid");
                 Environment.Exit(1);
             }
 
-            else if (listenPort is < 0 or > int.MaxValue)
+            else if (delayMs < 0)
             {
                 ConsoleHelper.WriteLine($"Error => Specified delay ms {args[i]} is out of range");
                 Environment.Exit(1);
             }
 
-            return (int)listenPort;
+            return delayMs;
         }
 
         return DefaultDelayMs;
+    }
+
+    public static int GetConcurrentRequestsMs(this string[] args)
+    {
+        const int ConcurrentRequests = 1;
+        
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            
+            if (string.IsNullOrEmpty(arg))
+                continue;
+
+            if (arg.Equals("--concurrency", StringComparison.OrdinalIgnoreCase) == false && arg.Equals("-c", StringComparison.OrdinalIgnoreCase) == false)
+                continue;
+
+            if (args.Length <= ++i)
+                return ConcurrentRequests;
+
+            if (int.TryParse(args[i], out var concurrentRequests) == false)
+            {
+                ConsoleHelper.WriteLine($"Error => Specified concurrent requests {args[i]} is invalid");
+                Environment.Exit(1);
+            }
+
+            else if (concurrentRequests < 1)
+            {
+                ConsoleHelper.WriteLine($"Error => Specified concurrent requests {args[i]} is out of range");
+                Environment.Exit(1);
+            }
+
+            return concurrentRequests;
+        }
+
+        return ConcurrentRequests;
     }
 
     public static ConcurrentBag<OllamaHost> GetHosts(this string[] args)
@@ -85,7 +120,7 @@ public static class Arguments
             if (string.IsNullOrEmpty(arg))
                 continue;
 
-            if (arg.Equals("--port", StringComparison.OrdinalIgnoreCase) || arg.Equals("-p", StringComparison.OrdinalIgnoreCase) || arg.Equals("--delay", StringComparison.OrdinalIgnoreCase) || arg.Equals("-d", StringComparison.OrdinalIgnoreCase))
+            if (arg.Equals("--port", StringComparison.OrdinalIgnoreCase) || arg.Equals("-p", StringComparison.OrdinalIgnoreCase) || arg.Equals("--delay", StringComparison.OrdinalIgnoreCase) || arg.Equals("-d", StringComparison.OrdinalIgnoreCase) || arg.Equals("--concurrency", StringComparison.OrdinalIgnoreCase) || arg.Equals("-c", StringComparison.OrdinalIgnoreCase))
             {
                 ++i;
                 continue;

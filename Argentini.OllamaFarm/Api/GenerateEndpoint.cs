@@ -50,10 +50,10 @@ public static class GenerateEndpoint
                 
                 foreach (var _host in hosts)
                 {
-                    if (_host.IsBusy || (_host.IsOffline && _host.NextPing > DateTime.Now))
+                    if (_host.ActiveRequestsCount >= stateService.ConcurrentRequests || (_host.IsOffline && _host.NextPing > DateTime.Now))
                         continue;
 
-                    _host.IsBusy = true;
+                    _host.ActiveRequestsCount++;
 
                     var wasOnline = _host.IsOnline;
                     var wasOffline = _host.IsOnline == false;
@@ -63,13 +63,13 @@ public static class GenerateEndpoint
                     
                     if (_host.IsOffline && wasOnline)
                     {
-                        _host.IsBusy = false;
+                        _host.ActiveRequestsCount = 0;
                         ConsoleHelper.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} offline; retry in {StateService.RetrySeconds} secs");
                     }
 
                     if (_host.IsOnline && wasOffline)
                     {
-                        _host.IsBusy = false;
+                        _host.ActiveRequestsCount = 0;
                         ConsoleHelper.WriteLine($"{DateTime.Now:s} => Ollama host {_host.Address}:{_host.Port} back online");
                     }
 
@@ -79,7 +79,7 @@ public static class GenerateEndpoint
                     }
                     else
                     {
-                        _host.IsBusy = false;
+                        _host.ActiveRequestsCount = 0;
                     }
                 }
 
@@ -204,7 +204,7 @@ public static class GenerateEndpoint
                 }
                 finally
                 {
-                    host.IsBusy = false;
+                    host.ActiveRequestsCount--;
                 }
             });
     }

@@ -11,7 +11,7 @@ public sealed class OllamaHost
     public static int RequestTimeoutSeconds => 900;
 
     public DateTime NextPing { get; set; } = DateTime.Now;
-    public bool IsBusy { get; set; }
+    public int ActiveRequestsCount { get; set; }
     public bool IsOnline { get; set; }
     public bool IsOffline => IsOnline == false;
 }
