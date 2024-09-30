@@ -41,7 +41,7 @@ public static class Arguments
 
     public static int GetDelayMs(this string[] args)
     {
-        const int DefaultDelayMs = 0;
+        const int DefaultDelayMs = 10;
         
         for (var i = 0; i < args.Length; i++)
         {

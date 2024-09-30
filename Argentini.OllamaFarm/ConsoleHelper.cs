@@ -35,7 +35,7 @@ public static class ConsoleHelper
         
         WriteLine("Parameters:");
         WriteLine("    [[--port | -p] [port]] : Listen to HTTP port (default 4444)");
-        WriteLine("    [[--delay | -d] [ms]]  : Delay (ms) added to requests (default 0)");
+        WriteLine("    [[--delay | -d] [ms]]  : Delay (ms) added to requests (default 10)");
         WriteLine("    [host[:#][/#] ...]     : List of hosts w/port and max concurrent requests");
         
         WriteLine();
