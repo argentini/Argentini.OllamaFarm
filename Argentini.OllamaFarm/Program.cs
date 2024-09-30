@@ -12,14 +12,13 @@ var _stateService = new StateService();
 
 #if DEBUG
 
-args = ["--delay", "10", "--concurrency", "2", "localhost", "10.0.10.3", "10.0.10.4"];
+args = ["--delay", "10", "localhost/2", "10.0.10.3/2", "10.0.10.4"];
 
 #endif
 
 _stateService.Port = args.GetListenPort();
 _stateService.Hosts = args.GetHosts();
 _stateService.DelayMs = args.GetDelayMs();
-_stateService.ConcurrentRequests = args.GetConcurrentRequestsMs();
 
 #endregion
 
@@ -37,13 +36,12 @@ foreach (var host in _stateService.Hosts)
 {
     await StateService.ServerAvailableAsync(host);
     
-    ConsoleHelper.WriteLine($"Using Ollama host {host.Address}:{host.Port} ({(host.IsOnline ? "Online" : "Offline")})");
+    ConsoleHelper.WriteLine($"Using Ollama host {host.Address}:{host.Port}/{host.MaxConcurrentRequests} ({(host.IsOnline ? "Online" : "Offline")})");
 
     if (host.IsOffline)
         host.NextPing = DateTime.Now;
 }
 
-ConsoleHelper.WriteLine($"Delay: {_stateService.DelayMs:D}ms, Concurrent Requests Per Host: {_stateService.ConcurrentRequests:D}");
 ConsoleHelper.WriteLine($"Listening on port {_stateService.Port}; press ESC or Control+C to exit");
 ConsoleHelper.WriteLine();
 

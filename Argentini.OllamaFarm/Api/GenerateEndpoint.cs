@@ -50,7 +50,7 @@ public static class GenerateEndpoint
                 
                 foreach (var _host in hosts)
                 {
-                    if (_host.ActiveRequestsCount >= stateService.ConcurrentRequests || (_host.IsOffline && _host.NextPing > DateTime.Now))
+                    if (_host.IsNotAvailable || (_host.IsOffline && _host.NextPing > DateTime.Now))
                         continue;
 
                     var wasOnline = _host.IsOnline;
@@ -73,9 +73,16 @@ public static class GenerateEndpoint
 
                     if (_host.IsOnline == false || host is not null || (string.IsNullOrEmpty(requestedHost) == false && requestedHost.Equals(_host.FullAddress, StringComparison.InvariantCultureIgnoreCase) == false))
                         continue;
-                    
-                    if (_host.ActiveRequestsCount < stateService.ConcurrentRequests)
-                        host = _host;
+
+                    if (_host.IsNotAvailable)
+                        continue;
+
+                    _host.ActiveRequestsCount++;
+
+                    if (_host.ActiveRequestsCount > _host.MaxConcurrentRequests)
+                        _host.ActiveRequestsCount = _host.MaxConcurrentRequests;
+
+                    host = _host;
                 }
 
                 if (host is null)
@@ -106,11 +113,6 @@ public static class GenerateEndpoint
                 
                 try
                 {
-                    host.ActiveRequestsCount++;
-
-                    if (host.ActiveRequestsCount > stateService.ConcurrentRequests)
-                        host.ActiveRequestsCount = stateService.ConcurrentRequests;
-
                     var timer = new Stopwatch();
                     var requestId = jsonRequest.Crc32();
                     
@@ -205,6 +207,9 @@ public static class GenerateEndpoint
                 finally
                 {
                     host.ActiveRequestsCount--;
+
+                    if (host.ActiveRequestsCount < 0)
+                        host.ActiveRequestsCount = 0;
                 }
             });
     }

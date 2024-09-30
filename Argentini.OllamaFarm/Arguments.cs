@@ -74,41 +74,6 @@ public static class Arguments
         return DefaultDelayMs;
     }
 
-    public static int GetConcurrentRequestsMs(this string[] args)
-    {
-        const int ConcurrentRequests = 1;
-        
-        for (var i = 0; i < args.Length; i++)
-        {
-            var arg = args[i];
-            
-            if (string.IsNullOrEmpty(arg))
-                continue;
-
-            if (arg.Equals("--concurrency", StringComparison.OrdinalIgnoreCase) == false && arg.Equals("-c", StringComparison.OrdinalIgnoreCase) == false)
-                continue;
-
-            if (args.Length <= ++i)
-                return ConcurrentRequests;
-
-            if (int.TryParse(args[i], out var concurrentRequests) == false)
-            {
-                ConsoleHelper.WriteLine($"Error => Specified concurrent requests {args[i]} is invalid");
-                Environment.Exit(1);
-            }
-
-            else if (concurrentRequests < 1)
-            {
-                ConsoleHelper.WriteLine($"Error => Specified concurrent requests {args[i]} is out of range");
-                Environment.Exit(1);
-            }
-
-            return concurrentRequests;
-        }
-
-        return ConcurrentRequests;
-    }
-
     public static ConcurrentBag<OllamaHost> GetHosts(this string[] args)
     {
         var hosts = new ConcurrentBag<OllamaHost>();
@@ -116,6 +81,7 @@ public static class Arguments
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
+            var concurrency = 1;
             
             if (string.IsNullOrEmpty(arg))
                 continue;
@@ -125,8 +91,21 @@ public static class Arguments
                 ++i;
                 continue;
             }
+
+            var segments = arg.TrimStart("http://").TrimStart("https://")?.Split('/', StringSplitOptions.RemoveEmptyEntries) ?? [];
+
+            if (segments.Length == 2)
+            {
+                arg = arg[..arg.LastIndexOf('/')];
+                
+                if (int.TryParse(segments[1], out concurrency) == false)
+                {
+                    ConsoleHelper.WriteLine($"Error => passed host {arg} specifies an invalid concurrency value");
+                    Environment.Exit(1);
+                }
+            }
             
-            var segments = arg.Split(':', StringSplitOptions.RemoveEmptyEntries);
+            segments = arg.Split(':', StringSplitOptions.RemoveEmptyEntries);
 
             if (segments.Length < 1)
                 continue;
@@ -151,6 +130,7 @@ public static class Arguments
                 Index = hosts.Count,
                 Address = segments[0],
                 Port = port,
+                MaxConcurrentRequests = concurrency,
                 IsOnline = true
             });
         }
