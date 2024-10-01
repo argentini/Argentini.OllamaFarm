@@ -193,9 +193,10 @@ public static class GenerateEndpoint
                 catch (Exception e)
                 {
                     if (cancellationTokenSource.IsCancellationRequested)
-                        return Results.Json(new
+                        return Results.Json(new ErrorResponse
                         {
-                            Message = "The ollama host request was cancelled."
+                            farm_host = host.FullHostAddress,
+                            message = $"Cancellation was requested; {e.Message}"
                         
                         }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.RequestTimeout);
 
@@ -206,18 +207,20 @@ public static class GenerateEndpoint
                     await StateService.ServerAvailableAsync(host);
 
                     if (host.IsOnline)
-                        return Results.Json(new
+                        return Results.Json(new ErrorResponse
                         {
-                            Message = $"The ollama host request has an issue, will retry => {e.Message}"
+                            farm_host = host.FullHostAddress ,
+                            message = $"Connectivity issue with host, will retry; {e.Message}"
                             
                         }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.BadRequest);
                     
                     if (wasOnline)
                         ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs");
                         
-                    return Results.Json(new
+                    return Results.Json(new ErrorResponse
                     {
-                        Message = $"ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs => {e.Message}"
+                        farm_host = host.FullHostAddress, 
+                        message = $"Host went offline; will retry in {StateService.RetrySeconds} seconds; {e.Message}"
                             
                     }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.RequestTimeout);
 
