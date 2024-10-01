@@ -60,7 +60,7 @@ public static class GenerateEndpoint
 
                 foreach (var _host in hosts)
                 {
-                    if (_host.IsNotAvailable || (_host.IsOffline && _host.NextPing > DateTime.Now))
+                    if (_host.IsTooBusy || (_host.IsOffline && _host.NextPing > DateTime.Now))
                         continue;
 
                     var wasOnline = _host.IsOnline;
@@ -84,7 +84,7 @@ public static class GenerateEndpoint
                     if (_host.IsOnline == false || host is not null || (string.IsNullOrEmpty(requestedHost) == false && requestedHost.Equals(_host.FullHostAddress, StringComparison.InvariantCultureIgnoreCase) == false))
                         continue;
 
-                    if (_host.IsNotAvailable)
+                    if (_host.IsTooBusy)
                         continue;
 
                     _host.ActiveRequestsCount++;
@@ -193,24 +193,34 @@ public static class GenerateEndpoint
                 catch (Exception e)
                 {
                     if (cancellationTokenSource.IsCancellationRequested)
-                    {
                         return Results.Json(new
                         {
-                            Message = $"The Ollama host request timeout of {OllamaHost.RequestTimeoutSeconds} secs has expired."
+                            Message = "The ollama host request was cancelled."
                         
                         }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.RequestTimeout);
-                    }
+
+                    var wasOnline = host.IsOnline;
+
+                    host.IsOnline = false;
                     
                     await StateService.ServerAvailableAsync(host);
 
-                    if (host.IsOffline)
-                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  Ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs");
+                    if (host.IsOnline)
+                        return Results.Json(new
+                        {
+                            Message = $"The ollama host request has an issue, will retry => {e.Message}"
+                            
+                        }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.BadRequest);
                     
+                    if (wasOnline)
+                        ConsoleHelper.WriteLine($"{DateTime.Now:s}  =>  ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs");
+                        
                     return Results.Json(new
                     {
-                        Message = $"{(host.IsOffline ? $"Ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs => " : string.Empty)}{e.Message}"
-                        
-                    }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.InternalServerError);
+                        Message = $"ollama host {host.FullHostAddress} offline; retry in {StateService.RetrySeconds} secs => {e.Message}"
+                            
+                    }, JsonSerializerOptions.Default, "application/json", (int)HttpStatusCode.RequestTimeout);
+
                 }
                 finally
                 {
